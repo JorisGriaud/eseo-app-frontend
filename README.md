@@ -67,7 +67,7 @@ Application mobile Flutter moderne pour consulter l'emploi du temps ESEO avec sy
 
 | Détails Cours | Thème Sombre | Connexion |
 |---------------|--------------|-----------|
-| ![Event Details](screenshots/event_details.png) | ![Dark Theme](screenshots/dark_theme.png) | ![Login](screenshots/login.png) |
+| ![Event Details](screenshots/event_details.png) | ![Dark Theme](screenshots/dark_theme_day.png) | ![Login](screenshots/login.png) |
 
 </div>
 
