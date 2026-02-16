@@ -1,0 +1,11 @@
+# Exemple de fichier key.properties pour signer l'APK
+# Copiez ce fichier vers key.properties et remplissez les valeurs
+# IMPORTANT : Ne commitez JAMAIS le fichier key.properties sur Git !
+
+storePassword=votre_mot_de_passe_store
+keyPassword=votre_mot_de_passe_key
+keyAlias=upload
+storeFile=../app/upload-keystore.jks
+
+# Pour générer un keystore :
+# keytool -genkey -v -keystore android/app/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload

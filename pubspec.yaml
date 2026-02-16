@@ -1,0 +1,53 @@
+name: ESEOApp
+description: Application emploi du temps ESEO
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  provider: ^6.1.1
+
+  # HTTP requests
+  http: ^1.2.0
+
+  # Secure storage for JWT
+  flutter_secure_storage: ^10.0.0
+
+  # Firebase for push notifications
+  firebase_core: ^4.4.0
+  firebase_messaging: ^16.1.0
+
+  # Date formatting
+  intl: ^0.20.2
+
+  # Google Fonts
+  google_fonts: ^8.0.1
+
+  # Icons
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/ESEO-App.png
+
+flutter_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/ESEO-App.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/ESEO-App.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
