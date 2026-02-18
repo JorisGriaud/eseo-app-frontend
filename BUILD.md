@@ -4,6 +4,10 @@ Ce guide explique comment builder l'application pour différentes plateformes.
 
 ---
 
+## A faire en premier
+
+Dans le fichier `lib\config\api_config.dart` remplacer `baseUrl` par son backend.
+
 ## 📱 Android
 
 ### Option 1 : APK Non-Signé (Debug/Test)

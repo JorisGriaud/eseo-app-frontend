@@ -1,7 +1,7 @@
 /// API configuration for EDT backend
 class ApiConfig {
   // Base URL - change for production
-  static const String baseUrl = 'https://mondomaine.com';
+  static const String baseUrl = 'https://monsousdomaine.mondomain.com';
 
   // Endpoints
   static const String login = '/auth/login';

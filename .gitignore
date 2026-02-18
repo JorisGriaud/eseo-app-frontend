@@ -86,6 +86,7 @@ app.*.map.json
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 firebase_options.dart
+firebase.json
 
 # Sensitive files
 .env

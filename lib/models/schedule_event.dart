@@ -8,6 +8,7 @@ class ScheduleEvent {
   final DateTime startTime;
   final DateTime endTime;
   final String? description;
+  final DateTime? lastModified; // Date de dernière modification (optionnel, fourni par le backend)
 
   ScheduleEvent({
     required this.id,
@@ -18,6 +19,7 @@ class ScheduleEvent {
     required this.startTime,
     required this.endTime,
     this.description,
+    this.lastModified,
   });
 
   /// Create ScheduleEvent from JSON response from ESEO API
@@ -47,6 +49,9 @@ class ScheduleEvent {
               ? DateTime.parse(json['fin']).toLocal()
               : DateTime.now().add(const Duration(hours: 2))),
       description: json['Description'] ?? json['description'],
+      lastModified: (json['created_at'] ?? json['lastModified'] ?? json['updatedAt'] ?? json['last_modified']) != null
+          ? DateTime.tryParse(json['created_at'] ?? json['lastModified'] ?? json['updatedAt'] ?? json['last_modified'])?.toLocal()
+          : null,
     );
   }
 

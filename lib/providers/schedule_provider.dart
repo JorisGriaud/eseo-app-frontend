@@ -97,6 +97,9 @@ class ScheduleProvider with ChangeNotifier {
       // Sort events by start time
       _events.sort((a, b) => a.startTime.compareTo(b.startTime));
 
+      // Remove overlapping events, keeping the most recent modification
+      _events = _removeOverlappingEvents(_events);
+
       _lastFetch = DateTime.now();
       _loadedStart = start;
       _loadedEnd = end;
@@ -139,6 +142,69 @@ class ScheduleProvider with ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  /// Remove overlapping events, keeping the most recently modified one.
+  ///
+  /// Two events overlap if one starts strictly before the other ends
+  /// (touching at the same time — e.g. end A == start B — is NOT an overlap).
+  ///
+  /// The event with the most recent [lastModified] date wins.
+  /// If neither event has [lastModified], both are kept as-is.
+  List<ScheduleEvent> _removeOverlappingEvents(List<ScheduleEvent> events) {
+    // Work on a copy sorted by start time
+    final sorted = List<ScheduleEvent>.from(events)
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+    final result = <ScheduleEvent>[];
+
+    for (final candidate in sorted) {
+      // Find all events in result that truly overlap with candidate
+      final overlappingIndices = <int>[];
+      for (int i = 0; i < result.length; i++) {
+        final existing = result[i];
+        final overlaps = candidate.startTime.isBefore(existing.endTime) &&
+            candidate.endTime.isAfter(existing.startTime);
+        if (overlaps) overlappingIndices.add(i);
+      }
+
+      if (overlappingIndices.isEmpty) {
+        // No conflict — just add
+        result.add(candidate);
+      } else {
+        // Decide whether candidate beats every conflicting event
+        bool candidateWinsAll = true;
+        for (final i in overlappingIndices) {
+          if (!_isMoreRecent(candidate, result[i])) {
+            candidateWinsAll = false;
+            break;
+          }
+        }
+
+        if (candidateWinsAll) {
+          // Remove all conflicting events and add candidate
+          for (final i in overlappingIndices.reversed) {
+            result.removeAt(i);
+          }
+          result.add(candidate);
+        }
+        // Otherwise keep existing events, discard candidate
+      }
+    }
+
+    result.sort((a, b) => a.startTime.compareTo(b.startTime));
+    return result;
+  }
+
+  /// Returns true if [a] should replace [b] when they overlap.
+  ///
+  /// Only uses [lastModified] — if not available on both, keeps existing ([b]).
+  bool _isMoreRecent(ScheduleEvent a, ScheduleEvent b) {
+    if (a.lastModified != null && b.lastModified != null) {
+      return a.lastModified!.isAfter(b.lastModified!);
+    }
+    // Cannot determine which is newer — keep existing
+    return false;
   }
 
   /// Clear all data
