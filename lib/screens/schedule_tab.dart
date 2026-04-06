@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/schedule_provider.dart';
 import '../providers/settings_provider.dart';
@@ -24,6 +28,7 @@ class _ScheduleTabState extends State<ScheduleTab> {
   DateTime _currentWeekStart = _getMondayOfWeek(DateTime.now());
   String _viewMode = 'day'; // 'day' ou 'week'
   int? _selectedDayIndex;
+  final ScreenshotController _screenshotController = ScreenshotController();
 
   @override
   void initState() {
@@ -99,6 +104,33 @@ class _ScheduleTabState extends State<ScheduleTab> {
     // Charger les données pour la nouvelle semaine si nécessaire
     final scheduleProvider = Provider.of<ScheduleProvider>(context, listen: false);
     scheduleProvider.ensureDataForDate(_currentWeekStart);
+  }
+
+  Future<void> _shareWeekScreenshot() async {
+    try {
+      final imageBytes = await _screenshotController.capture(
+        delay: const Duration(milliseconds: 10),
+        pixelRatio: 2.0,
+      );
+      if (imageBytes == null) return;
+
+      final directory = await getTemporaryDirectory();
+      final fileName = 'edt_semaine_${DateFormat('yyyy-MM-dd').format(_currentWeekStart)}.png';
+      final file = File('${directory.path}/$fileName');
+      await file.writeAsBytes(imageBytes);
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Mon emploi du temps - Semaine du ${DateFormat('d MMMM yyyy', 'fr_FR').format(_currentWeekStart)}',
+      );
+    } catch (e) {
+      print('Share error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur : $e')),
+        );
+      }
+    }
   }
 
   void _goToToday() {
@@ -256,6 +288,7 @@ class _ScheduleTabState extends State<ScheduleTab> {
                 onViewModeChanged: _onViewModeChanged,
                 onDaySelected: _onDaySelected,
                 weekStart: _currentWeekStart,
+                onShare: _viewMode == 'week' ? _shareWeekScreenshot : null,
               ),
 
               // Contenu principal
@@ -290,11 +323,17 @@ class _ScheduleTabState extends State<ScheduleTab> {
 
     // Display based on view mode
     if (_viewMode == 'week') {
-      return WeekCalendarView(
-        startOfWeek: _currentWeekStart,
-        events: scheduleProvider.events,
-        onPreviousWeek: _goToPreviousWeek,
-        onNextWeek: _goToNextWeek,
+      return Screenshot(
+        controller: _screenshotController,
+        child: Container(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          child: WeekCalendarView(
+            startOfWeek: _currentWeekStart,
+            events: scheduleProvider.events,
+            onPreviousWeek: _goToPreviousWeek,
+            onNextWeek: _goToNextWeek,
+          ),
+        ),
       );
     } else {
       // Day view with timeline

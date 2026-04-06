@@ -20,88 +20,80 @@ class WeekCalendarView extends StatelessWidget {
     required this.onNextWeek,
   });
 
+  static const int _startHour = 8;
+  static const int _endHour = 19;
+  static const double _timeColumnWidth = 40.0;
+  static const double _headerHeight = 40.0;
+
   @override
   Widget build(BuildContext context) {
     final weekDays = _getWeekDays(startOfWeek);
     final settings = Provider.of<SettingsProvider>(context);
 
-    return SingleChildScrollView(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: _buildCalendarGrid(context, weekDays, settings),
-      ),
-    );
-  }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const rightPadding = 6.0;
+        final availableWidth = constraints.maxWidth;
+        final availableHeight = constraints.maxHeight;
+        final dayWidth = (availableWidth - _timeColumnWidth - rightPadding) / 5;
+        final totalMinutes = (_endHour - _startHour) * 60;
+        final gridHeight = availableHeight - _headerHeight;
+        final minuteHeight = gridHeight / totalMinutes;
 
-  Widget _buildCalendarGrid(
-    BuildContext context,
-    List<DateTime> weekDays,
-    SettingsProvider settings,
-  ) {
-    const minuteHeight = 1.0;
-    const dayWidth = 120.0;
-    const timeColumnWidth = 60.0;
-    const startHour = 8;
-    const endHour = 19;
-    const totalMinutes = (endHour - startHour) * 60;
-    final gridHeight = totalMinutes * minuteHeight;
+        return Column(
+          children: [
+            // Days header
+            _buildDaysHeader(context, weekDays, dayWidth, _timeColumnWidth),
 
-    return SizedBox(
-      width: timeColumnWidth + (dayWidth * 5),
-      child: Column(
-        children: [
-          // Days header
-          _buildDaysHeader(context, weekDays, dayWidth, timeColumnWidth),
-
-          // Grid with time labels and events
-          SizedBox(
-            height: gridHeight,
-            child: Stack(
-              children: [
-                // Background grid
-                _buildBackgroundGrid(
-                  context,
-                  startHour,
-                  endHour,
-                  dayWidth,
-                  timeColumnWidth,
-                  minuteHeight,
-                ),
-
-                // Ligne verticale continue après la colonne des heures
-                Positioned(
-                  left: timeColumnWidth - 1,
-                  top: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 1,
-                    color: Theme.of(context).dividerColor,
+            // Grid with time labels and events
+            Expanded(
+              child: Stack(
+                children: [
+                  // Background grid
+                  _buildBackgroundGrid(
+                    context,
+                    _startHour,
+                    _endHour,
+                    dayWidth,
+                    _timeColumnWidth,
+                    minuteHeight,
                   ),
-                ),
 
-                // Events overlay
-                Row(
-                  children: [
-                    SizedBox(width: timeColumnWidth),
-                    ...weekDays.map((day) {
-                      return SizedBox(
-                        width: dayWidth,
-                        child: _buildDayEvents(
-                          context,
-                          day,
-                          startHour,
-                          minuteHeight,
-                          settings,
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ],
+                  // Ligne verticale continue après la colonne des heures
+                  Positioned(
+                    left: _timeColumnWidth - 1,
+                    top: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 1,
+                      color: Theme.of(context).dividerColor,
+                    ),
+                  ),
+
+                  // Events overlay
+                  Row(
+                    children: [
+                      SizedBox(width: _timeColumnWidth),
+                      ...weekDays.map((day) {
+                        return SizedBox(
+                          width: dayWidth,
+                          child: _buildDayEvents(
+                            context,
+                            day,
+                            _startHour,
+                            minuteHeight,
+                            settings,
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 
@@ -185,15 +177,16 @@ class WeekCalendarView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Time label
-              Container(
+              SizedBox(
                 width: timeColumnWidth,
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 4, right: 4),
+                  padding: const EdgeInsets.only(top: 2, right: 2),
                   child: Text(
                     '${hour.toString().padLeft(2, '0')}:00',
                     textAlign: TextAlign.right,
                     style: theme.textTheme.labelSmall?.copyWith(
                       inherit: true,
+                      fontSize: 9,
                       color: theme.colorScheme.onSurface.withOpacity(0.6),
                     ),
                   ),
@@ -281,28 +274,23 @@ class WeekCalendarView extends StatelessWidget {
     return Positioned(
       top: top + 1,
       left: 2,
-      right: 2,
+      right: 4,
       height: height - 2,
       child: GestureDetector(
         onTap: () => _showEventDetails(context, event, color, settings),
         child: Container(
+          clipBehavior: Clip.hardEdge,
           decoration: _getEventDecoration(settings.eventStyle, color, theme),
           padding: const EdgeInsets.all(2),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                event.title,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  inherit: true,
-                  fontWeight: FontWeight.bold,
-                  color: _getEventTextColor(settings.eventStyle, color, theme),
-                ),
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+          child: Text(
+            event.title,
+            style: theme.textTheme.bodySmall?.copyWith(
+              inherit: true,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: _getEventTextColor(settings.eventStyle, color, theme),
+            ),
+            overflow: TextOverflow.fade,
           ),
         ),
       ),

@@ -15,8 +15,7 @@ class TimelineDayView extends StatelessWidget {
     required this.displayDate,
   });
 
-  static const double hourHeight = 60.0;
-  static const double timelineWidth = 60.0;
+  static const double timelineWidth = 40.0;
   static const int startHour = 8;
   static const int endHour = 18;
 
@@ -26,18 +25,22 @@ class TimelineDayView extends StatelessWidget {
     final theme = Theme.of(context);
     final now = DateTime.now();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 80),
-      child: Container(
-        padding: const EdgeInsets.only(top: 24),
-        child: Stack(
-          children: [
-            // Timeline et heures
-            _buildTimeline(theme),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const topPadding = 8.0;
+        final totalHours = endHour - startHour + 1;
+        final hourHeight = (constraints.maxHeight - topPadding) / totalHours;
+
+        return Padding(
+          padding: const EdgeInsets.only(top: topPadding),
+          child: Stack(
+            children: [
+              // Timeline et heures
+              _buildTimeline(theme, hourHeight),
             // Ligne verticale continue
             Positioned(
               left: timelineWidth,
-              top: -24,
+              top: 0,
               bottom: 0,
               child: Container(
                 width: 1,
@@ -48,24 +51,25 @@ class TimelineDayView extends StatelessWidget {
             Positioned.fill(
               left: timelineWidth,
               child: Padding(
-                padding: const EdgeInsets.only(left: 16, right: 16),
+                padding: const EdgeInsets.only(left: 8, right: 8),
                 child: Stack(
                   children: [
-                    ..._buildEventCards(events, settings, theme),
+                    ..._buildEventCards(events, settings, theme, hourHeight),
                     // Indicateur de temps actuel
                     if (_shouldShowCurrentTimeIndicator(now, settings))
-                      _buildCurrentTimeIndicator(theme, now),
+                      _buildCurrentTimeIndicator(theme, now, hourHeight),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildTimeline(ThemeData theme) {
+  Widget _buildTimeline(ThemeData theme, double hourHeight) {
     return Column(
       children: [
         for (int hour = startHour; hour <= endHour; hour++)
@@ -78,12 +82,13 @@ class TimelineDayView extends StatelessWidget {
                 SizedBox(
                   width: timelineWidth,
                   child: Padding(
-                    padding: const EdgeInsets.only(right: 16),
+                    padding: const EdgeInsets.only(right: 4, top: 2),
                     child: Text(
                       '${hour.toString().padLeft(2, '0')}:00',
                       textAlign: TextAlign.right,
-                      style: theme.textTheme.bodySmall?.copyWith(
+                      style: theme.textTheme.labelSmall?.copyWith(
                         inherit: true,
+                        fontSize: 10,
                         color: theme.colorScheme.onSurface.withOpacity(0.5),
                         fontWeight: FontWeight.w500,
                       ),
@@ -101,14 +106,20 @@ class TimelineDayView extends StatelessWidget {
     List<ScheduleEvent> events,
     SettingsProvider settings,
     ThemeData theme,
+    double hourHeight,
   ) {
     return events.map((event) {
       final color = settings.getColorForCourseType(event.type);
-      final top = _calculateEventTop(event.startTime);
-      final height = _calculateEventHeight(event);
+      final top = _calculateEventTop(event.startTime, hourHeight);
+      final height = _calculateEventHeight(event, hourHeight);
 
-      // Afficher une version compacte pour les cours courts (< 100px de hauteur)
-      final isCompact = height < 100;
+      final durationMinutes = event.endTime.difference(event.startTime).inMinutes;
+      // isSingleLine : cours ≤ 45min — une seule ligne (ex: 30min)
+      final isSingleLine = durationMinutes <= 45;
+      // isCompact : cours entre 45min et 1h20 — horaire + titre sans salle/prof
+      final isCompact = !isSingleLine && durationMinutes < 80;
+
+      final textColor = _getEventTextColor(settings.eventStyle, color, theme);
 
       return Positioned(
         top: top,
@@ -145,54 +156,77 @@ class TimelineDayView extends StatelessWidget {
                     ),
                   ),
                 // Contenu
+                if (isSingleLine)
+                  // ≤ 45min : une seule ligne centrée verticalement
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        '${event.timeRange} : ${event.title}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          inherit: true,
+                          color: textColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                else
                 Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: isCompact ? 4 : 8,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Heure (toujours affichée)
+                      // Heure
                       Text(
                         event.timeRange,
                         style: theme.textTheme.bodySmall?.copyWith(
                           inherit: true,
-                          color: _getEventTextColor(settings.eventStyle, color, theme).withOpacity(0.7),
+                          color: textColor.withOpacity(0.7),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       const SizedBox(height: 2),
-                      // Titre (toujours affiché)
+                      // Titre
                       Flexible(
                         child: Text(
                           event.title,
                           style: theme.textTheme.titleSmall?.copyWith(
                             inherit: true,
                             fontWeight: FontWeight.bold,
-                            color: _getEventTextColor(settings.eventStyle, color, theme),
+                            color: textColor,
                           ),
-                          maxLines: isCompact ? 1 : 2,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      // Lieu et professeur (affichés uniquement si pas compact)
+                      // Lieu et professeur (masqués si compact)
                       if (!isCompact) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Row(
                           children: [
                             if (event.location.isNotEmpty) ...[
                               Icon(
                                 Icons.location_on_outlined,
-                                size: 14,
-                                color: _getEventTextColor(settings.eventStyle, color, theme).withOpacity(0.6),
+                                size: 13,
+                                color: textColor.withOpacity(0.6),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 3),
                               Flexible(
                                 child: Text(
                                   event.location,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     inherit: true,
-                                    color: _getEventTextColor(settings.eventStyle, color, theme).withOpacity(0.6),
+                                    fontSize: 11,
+                                    color: textColor.withOpacity(0.6),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -205,7 +239,8 @@ class TimelineDayView extends StatelessWidget {
                                 child: Text(
                                   '•',
                                   style: TextStyle(
-                                    color: _getEventTextColor(settings.eventStyle, color, theme).withOpacity(0.6),
+                                    fontSize: 11,
+                                    color: textColor.withOpacity(0.6),
                                   ),
                                 ),
                               ),
@@ -215,7 +250,8 @@ class TimelineDayView extends StatelessWidget {
                                   event.professor,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     inherit: true,
-                                    color: _getEventTextColor(settings.eventStyle, color, theme).withOpacity(0.6),
+                                    fontSize: 11,
+                                    color: textColor.withOpacity(0.6),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -236,8 +272,8 @@ class TimelineDayView extends StatelessWidget {
     }).toList();
   }
 
-  Widget _buildCurrentTimeIndicator(ThemeData theme, DateTime now) {
-    final top = _calculateEventTop(now);
+  Widget _buildCurrentTimeIndicator(ThemeData theme, DateTime now, double hourHeight) {
+    final top = _calculateEventTop(now, hourHeight);
 
     return Positioned(
       top: top - 10, // Aligné avec le centre de la ligne rouge
@@ -294,14 +330,14 @@ class TimelineDayView extends StatelessWidget {
     );
   }
 
-  double _calculateEventTop(DateTime time) {
+  double _calculateEventTop(DateTime time, double hourHeight) {
     final hour = time.hour;
     final minute = time.minute;
     final totalMinutes = (hour - startHour) * 60 + minute;
-    return (totalMinutes / 60) * hourHeight + 24; // +24 pour le padding top
+    return (totalMinutes / 60) * hourHeight;
   }
 
-  double _calculateEventHeight(ScheduleEvent event) {
+  double _calculateEventHeight(ScheduleEvent event, double hourHeight) {
     final durationMinutes = event.endTime.difference(event.startTime).inMinutes;
     return (durationMinutes / 60) * hourHeight;
   }

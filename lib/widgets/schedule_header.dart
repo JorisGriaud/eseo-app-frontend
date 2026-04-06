@@ -12,6 +12,7 @@ class ScheduleHeader extends StatelessWidget {
   final Function(String) onViewModeChanged;
   final Function(int) onDaySelected;
   final DateTime weekStart;
+  final VoidCallback? onShare;
 
   const ScheduleHeader({
     super.key,
@@ -24,6 +25,7 @@ class ScheduleHeader extends StatelessWidget {
     required this.onViewModeChanged,
     required this.onDaySelected,
     required this.weekStart,
+    this.onShare,
   });
 
   @override
@@ -80,9 +82,9 @@ class ScheduleHeader extends StatelessWidget {
             padding: const EdgeInsets.all(8),
           ),
           Flexible(
-            child: InkWell(
+            child: GestureDetector(
               onTap: onTodayTap,
-              borderRadius: BorderRadius.circular(8),
+              onLongPress: onShare != null ? () => _showSharePopup(context, theme) : null,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Text(
@@ -241,6 +243,29 @@ class ScheduleHeader extends StatelessWidget {
             ),
           );
         }),
+      ),
+    );
+  }
+
+  void _showSharePopup(BuildContext context, ThemeData theme) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.ios_share, color: theme.colorScheme.primary),
+              title: const Text('Partager l\'emploi du temps'),
+              onTap: () {
+                Navigator.pop(context);
+                onShare?.call();
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

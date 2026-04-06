@@ -3,10 +3,28 @@ import '../models/user.dart';
 import 'api_service.dart';
 import 'storage_service.dart';
 
+/// Result of a login attempt — either a User or MFA challenge
+class LoginResult {
+  final User? user;
+  final bool mfaRequired;
+  final String? sessionId;
+  final String? mfaType; // "totp" or "push"
+  final String? mfaData; // e.g. phone number for push
+
+  LoginResult({
+    this.user,
+    this.mfaRequired = false,
+    this.sessionId,
+    this.mfaType,
+    this.mfaData,
+  });
+}
+
 /// Authentication service
 class AuthService {
   /// Login with ESEO credentials
-  static Future<User> login(String email, String password) async {
+  /// Returns a LoginResult — check mfaRequired to know if MFA is needed
+  static Future<LoginResult> login(String email, String password) async {
     final response = await ApiService.post(
       ApiConfig.login,
       {
@@ -17,9 +35,39 @@ class AuthService {
     );
 
     final data = ApiService.handleResponse(response);
+
+    if (data['mfa_required'] == true) {
+      return LoginResult(
+        mfaRequired: true,
+        sessionId: data['session_id'],
+        mfaType: data['mfa_type'],
+        mfaData: data['mfa_data']?.toString(),
+      );
+    }
+
+    final user = User.fromJson(data);
+    await StorageService.saveToken(user.accessToken);
+    await StorageService.saveEseoId(user.eseoId);
+
+    return LoginResult(user: user);
+  }
+
+  /// Verify MFA code (TOTP or push)
+  static Future<User> verifyMfa(String sessionId, {String? totpCode}) async {
+    final body = <String, dynamic>{'session_id': sessionId};
+    if (totpCode != null) {
+      body['totp_code'] = totpCode;
+    }
+
+    final response = await ApiService.post(
+      ApiConfig.mfaVerify,
+      body,
+      includeAuth: false,
+    );
+
+    final data = ApiService.handleResponse(response);
     final user = User.fromJson(data);
 
-    // Save token and eseo_id to secure storage
     await StorageService.saveToken(user.accessToken);
     await StorageService.saveEseoId(user.eseoId);
 
@@ -40,7 +88,6 @@ class AuthService {
   /// Logout
   static Future<void> logout() async {
     try {
-      // Call backend logout endpoint
       await ApiService.delete(
         ApiConfig.logout,
         includeAuth: true,
@@ -48,7 +95,6 @@ class AuthService {
     } catch (e) {
       // Continue logout even if API call fails
     } finally {
-      // Clear local storage
       await StorageService.clearAll();
     }
   }

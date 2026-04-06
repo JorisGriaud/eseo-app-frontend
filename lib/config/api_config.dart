@@ -1,10 +1,11 @@
 /// API configuration for EDT backend
 class ApiConfig {
   // Base URL - change for production
-  static const String baseUrl = 'https://monsousdomaine.mondomain.com';
+  static const String baseUrl = 'http://192.168.1.51:8000';
 
   // Endpoints
   static const String login = '/auth/login';
+  static const String mfaVerify = '/auth/mfa/verify';
   static const String registerDevice = '/auth/register-device';
   static const String logout = '/auth/logout';
   static const String agenda = '/agenda';
